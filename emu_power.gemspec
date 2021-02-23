@@ -1,8 +1,9 @@
 Gem::Specification.new do |s|
 	s.name        = 'emu_power'
-	s.version     = '1.0'
+	s.version     = '1.1'
 	s.summary     = "API for interfacing with the Rainforest EMU energy monitor."
 	s.description = "This is an implementation of the XML API for the Rainforest EMU in ruby."
+	s.homepage    = "https://github.com/Steve0320/EmuPower"
 	s.authors     = ["Steven Bertolucci"]
 	s.email       = 'srbertol@mtu.edu'
 	s.files       = ["readme.md", "lib/emu_power.rb", "lib/emu_power/api.rb", "lib/emu_power/commands.rb", "lib/emu_power/types.rb", "lib/emu_power/stream_parser.rb"]
