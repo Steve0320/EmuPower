@@ -26,9 +26,13 @@ class EmuPower::Types
 		# these into more standard Unix epoch timestamps by adding the
 		# appropriate offset.
 		def timestamp
-			ts = self.raw['TimeStamp']
-			return nil if ts == nil
-			return Integer(ts) + 946684800
+			parse_timestamp('TimeStamp')
+		end
+
+		def parse_timestamp(prop)
+			v = @raw[prop]
+			return nil if v == nil
+			return Integer(v) + 946684800
 		end
 
 		def parse_hex(prop)
@@ -56,30 +60,59 @@ class EmuPower::Types
 
 	end
 
+	# TODO
 	class ConnectionStatus < Notification
 	end
 
+	# TODO
 	class DeviceInfo < Notification
 	end
 
 	class ScheduleInfo < Notification
+
+		attr_accessor :mode
+		attr_accessor :event
+		attr_accessor :frequency
+		attr_accessor :enabled
+
+		def build(hash)
+			self.mode = hash['Mode']
+			self.event = hash['Event']
+			self.frequency = parse_hex('Frequency')
+			self.enabled = parse_bool('Enabled')
+		end
+
 	end
 
+	# TODO
 	class MeterList < Notification
 	end
 
+	# TODO
 	class MeterInfo < Notification
 	end
 
+	# TODO
 	class NetworkInfo < Notification
 	end
 
 	class TimeCluster < Notification
+
+		attr_accessor :utc_time
+		attr_accessor :local_time
+
+		def build(hash)
+			self.utc_time = parse_timestamp('UTCTime')
+			self.local_time = parse_timestamp('LocalTime')
+		end
+
 	end
 
+	# TODO
 	class MessageCluster < Notification
 	end
 
+	# TODO
 	class PriceCluster < Notification
 	end
 
@@ -111,14 +144,50 @@ class EmuPower::Types
 	end
 
 	class CurrentSummationDelivered < Notification
+
+		attr_accessor :raw_delivered
+		attr_accessor :raw_received
+		attr_accessor :multiplier
+		attr_accessor :divisor
+		attr_accessor :digits_right
+		attr_accessor :digits_left
+		attr_accessor :suppress_leading_zeroes
+
+		def build(hash)
+
+			self.raw_delivered = parse_hex('SummationDelivered')
+			self.raw_received = parse_hex('SummationReceived')
+			self.multiplier = parse_hex('Multiplier')
+			self.divisor = parse_hex('Divisor')
+			self.digits_right = parse_hex('DigitsRight')
+			self.digits_left = parse_hex('DigitsLeft')
+			self.suppress_leading_zeroes = parse_bool('SuppressLeadingZero')
+
+		end
+
+		def delivered
+			return 0 if self.raw_delivered == 0
+			return nil if self.multiplier.nil? || self.raw_delivered.nil? || self.divisor.nil?
+			return self.multiplier * self.raw_delivered / Float(self.divisor)
+		end
+
+		def received
+			return 0 if self.divisor == 0
+			return nil if self.multiplier.nil? || self.raw_received.nil? || self.divisor.nil?
+			return self.multiplier * self.raw_received / Float(self.divisor)
+		end
+		
 	end
 
+	# TODO
 	class CurrentPeriodUsage < Notification
 	end
 
+	# TODO
 	class LastPeriodUsage < Notification
 	end
 
+	# TODO
 	class ProfileData < Notification
 	end
 

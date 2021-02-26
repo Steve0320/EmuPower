@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
 	s.name        = 'emu_power'
-	s.version     = '1.1'
+	s.version     = '1.2'
 	s.summary     = "API for interfacing with the Rainforest EMU energy monitor."
 	s.description = "This is an implementation of the XML API for the Rainforest EMU in ruby."
 	s.homepage    = "https://github.com/Steve0320/EmuPower"
