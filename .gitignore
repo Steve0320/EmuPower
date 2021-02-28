@@ -1,0 +1,6 @@
+# Standard ignores
+Gemfile.lock
+.idea
+
+# Exclude built gems
+*.gem

@@ -2,133 +2,165 @@
 # unit. This API is asynchronous, and allows event handlers
 # to be registered for the various message types.
 
-require 'emu_power/stream_parser'
-require 'emu_power/types'
-
+require_relative 'types'
 require 'serialport'
-require 'nokogiri'
 
 class EmuPower::Api
 
 	LINE_TERMINATOR = "\r\n"
 
-	# Initialize the serial connection and build notification histories
-	def initialize(tty, history_length = 10)
+	attr_accessor :debug_mode
 
-		@port = SerialPort.new(tty, baud: 115200)
+	# Initialize the serial connection and set up internal structures.
+	def initialize(tty, debug: false)
 
-		@histories = {}
-		@callbacks = {}
-		EmuPower::Types::Notification.subclasses.each do |n|
-			@histories[n] = Array.new(history_length)
-			@callbacks[n] = nil
-		end
+		@port = SerialPort.new(tty, 115200, 8, 1, SerialPort::NONE)
+
+		# Get rid of any existing buffered data - we only want to operate on
+		# fresh notifications.
+		@port.flush_input
+		@port.flush_output
+
+		@debug_mode = debug
+
+		reset_callbacks!
 
 	end
 
-	# Register the callback for specific notification events. Expects
-	# a subclass of Types::Notification. If :global is passed for klass,
-	# the callback will be triggered for every event in addition to the
-	# normal callback. Note that only one callback may be registered
-	# per event - setting another will replace the existing one.
+	# Register the callback for specific notification events. Expects either an
+	# EmuPower::Types::Notification subclass, or :global, or :fallback. If :global
+	# is passed, the callback will be fired on every notification. If :fallback is
+	# passed, the callback will be fired for every notification that does not have
+	# a specific callback registered already.
 	def callback(klass, &block)
-		@callbacks[klass] = block
+
+		if klass == :global || klass == 'global'
+			@global_callback = block
+		elsif klass == :fallback || klass == 'fallback'
+			@fallback_callback = block
+		elsif EmuPower::Types::Notification.subclasses.include?(klass)
+			@callbacks[klass] = block
+		else
+			klass_list = EmuPower::Types::Notification.subclasses.map(&:name).join(', ')
+			raise ArgumentError.new("Class must be :global, :fallback, or one of #{klass_list}")
+		end
+
 		return true
+
+	end
+
+	# Reset all callbacks to the default no-op state.
+	def reset_callbacks!
+		@global_callback = nil
+		@fallback_callback = nil
+		@callbacks = {}
 	end
 
 	# Send a command to the device. Expects an instance of one of the
 	# command classes defined in commands.rb. The serial connection
 	# must be started before this can be used.
 	def issue_command(obj)
-		return false if @thread.nil?
-		return false unless obj.respond_to?(:to_command)
+
+		return false if @thread.nil? || !obj.respond_to?(:to_command)
+
 		xml = obj.to_command
 		@port.write(xml)
+
 		return true
+
 	end
 
-	# Begin polling for serial data. We spawn a new thread to
-	# handle this so we don't block input. If blocking is set
-	# to true, this method blocks indefinitely. If false, it
-	# returns true and expects the caller to handle things.
-	def start_serial(interval: 1, blocking: true)
+	# Begin polling for serial data. We spawn a new thread to handle this so we don't
+	# block input. This method blocks until the reader thread terminates, which in most
+	# cases is never. This should usually be called at the end of a program after all
+	# callbacks are registered.
+	def start_serial
 
 		return false unless @thread.nil?
 
-		parser = construct_parser
-
 		@thread = Thread.new do
+
+			# Define boundary tags
+			root_elements = EmuPower::Types.notify_roots
+			start_tags = root_elements.map { |v| "<#{v}>" }
+			stop_tags = root_elements.map { |v| "</#{v}>" }
+
+			current_notify = ''
+
+			# Build up complete XML fragments line-by-line and dispatch callbacks
 			loop do
-				begin
-					parser.parse
-					sleep(interval)
-				rescue Nokogiri::XML::SyntaxError
-					# This means that we probably connected in the middle
-					# of a message, so just reset the parser.
-					parser = construct_parser
+
+			  line = @port.readline(LINE_TERMINATOR).strip
+
+				if start_tags.include?(line)
+					current_notify = line
+
+				elsif stop_tags.include?(line)
+
+					xml = current_notify + line
+					current_notify = ''
+
+					begin
+						obj = EmuPower::Types.construct(xml)
+					rescue StandardError
+						puts "Failed to construct object for XML fragment: #{xml}" if @debug_mode
+						next
+					end
+
+					if obj
+						puts obj if @debug_mode
+						perform_callbacks(obj)
+					else
+						puts "Incomplete XML stream: #{xml}" if @debug_mode
+					end
+
+				else
+					current_notify += line
 				end
+
 			end
 		end
 
-		if blocking
+		# Block until thread is terminated, and ensure we clean up after ourselves.
+		begin
 			@thread.join
-		else
-			return true
+		ensure
+			stop_serial if @thread
 		end
 
 	end
 
-	# Stop polling for data. Already-received objects will
-	# remain available.
+	# Terminate the reader thread. The start_serial method will return
+	# once this is called. This will usually be called from a signal
+	# trap or similar, since the main program will usually be blocked
+	# by start_serial.
 	def stop_serial
+
 		return false if @thread.nil?
+
 		@thread.terminate
 		@thread = nil
+
 		return true
-	end
 
-	# Get the full history buffer for a given notify type
-	def history_for(klass)
-		return @histories[klass].compact
-	end
-
-	# Get the most recent object for the given type
-	def current(klass)
-		return history_for(klass)[0]
 	end
 
 	private
 
-	# Handle the completed hash objects when notified by the parser
-	def handle_response(obj)
+	# Dispatch the appropriate callback
+	def perform_callbacks(obj)
 
-		container = EmuPower::Types.construct(obj)
+		klass = obj.class
 
-		if container == nil
-			puts "BAD OBJECT #{obj}"
+		# Fire global callback
+		@global_callback&.call(obj)
+
+		klass_specific = @callbacks[klass]
+		if klass_specific
+			klass_specific.call(obj)
 		else
-			push_history(container)
-			@callbacks[container.class]&.call(container)
-			@callbacks[:global]&.call(container)
+			@fallback_callback&.call(obj)
 		end
-
-	end
-
-	# Helper for initializing underlying parser
-	def construct_parser
-		return EmuPower::StreamParser.new(@port, LINE_TERMINATOR, EmuPower::Types.notify_roots) do |obj|
-			handle_response(obj)
-		end
-	end
-
-	# Helper for inserting object into appropriate history queue
-	def push_history(obj)
-		
-		type = obj.class
-
-		old = @histories[type].pop
-		@histories[type].prepend(obj)
-		return old
 
 	end
 

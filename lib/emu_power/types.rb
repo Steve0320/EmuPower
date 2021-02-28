@@ -1,5 +1,8 @@
 # Notification types. Provides convenience calculators and
 # accessors for the notifications sent by the EMU device.
+
+require 'nori'
+
 class EmuPower::Types
 
 	# Base class for notifications
@@ -13,20 +16,25 @@ class EmuPower::Types
 		attr_accessor :timestamp
 
 		def initialize(hash)
+
 			@raw = hash
+
+			# All messages may contain this metadata
 			@device_mac = @raw['DeviceMacId']
 			@meter_mac = @raw['MeterMacId']
+
+			# The EMU sets timestamps relative to Jan 1st 2000 UTC. We convert
+			# these into more standard Unix epoch timestamps by adding the
+			# appropriate offset.
+			@timestamp = parse_timestamp('TimeStamp')
+
+			# Build out type-specific fields
 			build(hash)
+
 		end
 
+		# Overridden by subclasses
 		def build(hash)
-		end
-
-		# The EMU sets timestamps relative to Jan 1st 2000 UTC. We convert
-		# these into more standard Unix epoch timestamps by adding the
-		# appropriate offset.
-		def timestamp
-			parse_timestamp('TimeStamp')
 		end
 
 		def parse_timestamp(prop)
@@ -45,6 +53,10 @@ class EmuPower::Types
 			v = @raw[prop]
 			return nil if v.nil?
 			return (@raw[prop] == 'Y') ? true : false
+		end
+
+		def to_s
+			"#{self.class.root_name} Notification: #{@raw.to_s}"
 		end
 
 		# Name of the XML root object corresponding to this type
@@ -194,10 +206,15 @@ class EmuPower::Types
 	# Dispatch to the appropriate container class based
 	# on the type. Expects a data hash. Returns nil on
 	# bad message.
-	def self.construct(data)
+	def self.construct(xml)
 
-		type = data['MessageType']
-		return nil if type == nil || !notify_roots.include?(type)
+		hash = Nori.new.parse(xml)
+
+		# Extract the root of the hash and dispatch to the appropriate
+		# container class.
+		type, data = hash.first
+
+		return nil unless notify_roots.include?(type)
 
 		klass = self.const_get(type)
 		return klass.new(data)

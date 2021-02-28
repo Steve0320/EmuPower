@@ -1,5 +1,6 @@
-# Collection of command types for controlling various
-# functions on the EMU device.
+# Collection of command types for controlling various functions on the EMU
+# device. These should be constructed and passed as arguments to the API
+# object's issue_command method.
 
 class EmuPower::Commands
 
