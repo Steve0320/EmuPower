@@ -2,7 +2,7 @@
 # unit. This API is asynchronous, and allows event handlers
 # to be registered for the various message types.
 
-require_relative 'types'
+require_relative 'notifications'
 require 'serialport'
 
 class EmuPower::Api
@@ -28,7 +28,7 @@ class EmuPower::Api
 	end
 
 	# Register the callback for specific notification events. Expects either an
-	# EmuPower::Types::Notification subclass, or :global, or :fallback. If :global
+	# EmuPower::Notifications::Notification subclass, or :global, or :fallback. If :global
 	# is passed, the callback will be fired on every notification. If :fallback is
 	# passed, the callback will be fired for every notification that does not have
 	# a specific callback registered already.
@@ -38,10 +38,10 @@ class EmuPower::Api
 			@global_callback = block
 		elsif klass == :fallback || klass == 'fallback'
 			@fallback_callback = block
-		elsif EmuPower::Types::Notification.subclasses.include?(klass)
+		elsif EmuPower::Notifications::Notification.subclasses.include?(klass)
 			@callbacks[klass] = block
 		else
-			klass_list = EmuPower::Types::Notification.subclasses.map(&:name).join(', ')
+			klass_list = EmuPower::Notifications::Notification.subclasses.map(&:name).join(', ')
 			raise ArgumentError.new("Class must be :global, :fallback, or one of #{klass_list}")
 		end
 
@@ -81,7 +81,7 @@ class EmuPower::Api
 		@thread = Thread.new do
 
 			# Define boundary tags
-			root_elements = EmuPower::Types.notify_roots
+			root_elements = EmuPower::Notifications.notify_roots
 			start_tags = root_elements.map { |v| "<#{v}>" }
 			stop_tags = root_elements.map { |v| "</#{v}>" }
 
@@ -101,7 +101,7 @@ class EmuPower::Api
 					current_notify = ''
 
 					begin
-						obj = EmuPower::Types.construct(xml)
+						obj = EmuPower::Notifications.construct(xml)
 					rescue StandardError
 						puts "Failed to construct object for XML fragment: #{xml}" if @debug_mode
 						next

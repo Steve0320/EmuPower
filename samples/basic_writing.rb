@@ -12,7 +12,7 @@ require 'emu_power'
 api = EmuPower::Api.new("/dev/tty.usbmodem146101")
 
 # Print out a summary on receipt of a usage notification
-api.callback(EmuPower::Types::CurrentPeriodUsage) do |o|
+api.callback(EmuPower::Notifications::CurrentPeriodUsage) do |o|
 	puts "Current period [#{Time.at(o.start_date)}]: #{o.current_usage}"
 end
 

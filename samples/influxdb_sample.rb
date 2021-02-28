@@ -17,7 +17,7 @@ client = InfluxDB2::Client.new(HOST, TOKEN, bucket: BUCKET, org: ORGANIZATION, u
 write_api = client.create_write_api
 
 # Send data to InfluxDB on usage notification
-api.callback(EmuPower::Types::InstantaneousDemand) do |notification|
+api.callback(EmuPower::Notifications::InstantaneousDemand) do |notification|
 
 	next if notification.demand.nil?
 	
@@ -31,7 +31,7 @@ api.callback(EmuPower::Types::InstantaneousDemand) do |notification|
 
 end
 
-api.callback(EmuPower::Types::CurrentSummationDelivered) do |notification|
+api.callback(EmuPower::Notifications::CurrentSummationDelivered) do |notification|
 
 	next if notification.delivered.nil? && notification.received.nil?
 

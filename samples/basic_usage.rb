@@ -10,7 +10,7 @@ require 'emu_power'
 api = EmuPower::Api.new("/dev/ttyEmu")
 
 # Print demand when receiving demand notification
-api.callback(EmuPower::Types::InstantaneousDemand) do |o|
+api.callback(EmuPower::Notifications::InstantaneousDemand) do |o|
 	if o.demand.nil?
 		puts "UNKNOWN DEMAND"
 	else

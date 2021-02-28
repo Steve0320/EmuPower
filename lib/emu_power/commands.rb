@@ -33,61 +33,112 @@ class EmuPower::Commands
 
 	end
 
-	class GetNetworkInfo < Command
+	# Helper class for defining basic commands easily. Uses the current class
+	# name to define the Command Name element of the output XML.
+	class BasicCommand < Command
 		def initialize
-			super('get_network_info')
+
+			class_name = self.class.name.split('::').last
+			command_name = class_name
+												 .gsub(/([A-Z]+)([A-Z][a-z])/,'\1_\2')
+												 .gsub(/([a-z\d])([A-Z])/,'\1_\2')
+												 .tr("-", "_")
+												 .downcase
+			super(command_name)
+
 		end
 	end
 
-	class GetNetworkStatus < Command
-		def initialize
-			super('get_network_status')
-		end
+
+	# Restart the EMU device.
+	class Restart < BasicCommand
 	end
 
-	class GetInstantaneousDemand < Command
-		def initialize
-			super('get_instantaneous_demand')
-		end
+	# Get the current time. Triggers a TimeCluster notification.
+	class GetTime < BasicCommand
 	end
 
-	class GetCurrentPeriodUsage < Command
-		def initialize
-			super('get_current_period_usage')
-		end
+	# Get current messages from the device. Triggers a MessageCluster
+	# notification for each message.
+	class GetMessage < BasicCommand
 	end
 
-	class CloseCurrentPeriod < Command
-		def initialize
-			super('close_current_period')
-		end
+	# Request information about the meter network. Triggers a
+	# NetworkInfo notification.
+	class GetNetworkInfo < BasicCommand
 	end
 
-	class GetPrice < Command
-		def initialize
-			super('get_price')
-		end
+	# Request information about the connection between the EMU-2
+	# and the meter. Triggers a ConnectionStatus notification.
+	class GetConnectionStatus < BasicCommand
 	end
 
-	class GetMessage < Command
-		def initialize
-			super('get_message')
-		end
+	# Request a list of all connected meters. This triggers one
+	# MeterList notification for each connected meter.
+	class GetMeterList < BasicCommand
 	end
 
-	# TODO: Confirm Message
-
-	class GetCurrentSummation < Command
-		def initialize
-			super('get_current_summation')
-		end
+	# Get detailed info on a specific meter. If more than one
+	# meter is connected, a MAC must be passed to identify
+	# the target. Triggers a MeterInfo notification.
+	# TODO: Allow passing meter MAC argument
+	class GetMeterInfo < BasicCommand
 	end
 
-	# TODO: Get History Data
+	# Request information about the EMU-2 device. Triggers a
+	# DeviceInfo notification.
+	class GetDeviceInfo < BasicCommand
+	end
 
-	# Note: This doesn't seem to work. The command is issued successfully, but
-	# the EMU does not update any schedule info. This may be disallowed by the
-	# meter or something.
+	# Get the current fast poll period. Triggers a FastPollStatus
+	# notification.
+	class GetFastPollStatus < BasicCommand
+	end
+
+	# Get a list of the previous billing periods. Triggers a TODO
+	class GetBillingPeriods < BasicCommand
+	end
+
+	# Get the running total since the last CloseCurrentPeriod
+	# command was issued. Triggers a CurrentPeriodUsage notify
+	class GetCurrentPeriodUsage < BasicCommand
+	end
+
+	# Close out the current billing period. Does not trigger
+	# any notifications.
+	class CloseCurrentPeriod < BasicCommand
+	end
+
+	# Get the previous billing period's usage. Triggers a TODO
+	class GetLastPeriodUsage < BasicCommand
+	end
+
+	# Get the current power draw in kilowatts. Triggers an
+	# InstantaneousDemand notification.
+	class GetInstantaneousDemand < BasicCommand
+	end
+
+	# Get the current meter reading. This is independent of the
+	# current period usage.
+	class GetCurrentSummationDelivered < BasicCommand
+	end
+
+	# Get the current electricity rate. This is either provided
+	# by the meter, or set manually on the device during setup.
+	# This triggers a PriceCluster notification.
+	class GetCurrentPrice < BasicCommand
+	end
+
+	# Get the current block prices. This triggers a BlockPriceDetail
+	# notification, and is only applicable to block-based billing
+	# schemes.
+	class GetPriceBlocks < BasicCommand
+	end
+
+	# Set the notification schedule on the EMU. Note: this only seems to be effective shortly after the
+	# unit starts up, while the modes of the schedule are all 'default'. After that, the meter seems to
+	# push a schedule configuration and set the mode to 'rest', which overwrites the existing schedule
+	# and ignores subsequent SetSchedule commands.
 	class SetSchedule < Command
 
 		EVENTS = %w[time message price summation demand scheduled_prices profile_data billing_period block_period]
@@ -102,7 +153,8 @@ class EmuPower::Commands
 
 	end
 
-	# TODO: Add event field
+	# Get the current event schedule. This triggers one ScheduleInfo notification for
+	# each of the listed event types.
 	class GetSchedule < Command
 
 		EVENTS = %w[time message price summation demand scheduled_prices profile_data billing_period block_period]
@@ -117,8 +169,7 @@ class EmuPower::Commands
 			end
 
 		end
-	end
 
-	# TODO: Reboot
+	end
 
 end
