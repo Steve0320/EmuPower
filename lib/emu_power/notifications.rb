@@ -59,13 +59,11 @@ class EmuPower::Notifications
 		# Calculate real total from divisors and multipliers
 		def parse_amount(prop)
 
-			v = @raw[prop]
-			return 0 if v == 0
-
 			multiplier = parse_hex('Multiplier')
 			divisor = parse_hex('Divisor')
+			v = parse_hex(prop)
 
-			return nil if v.nil? || multiplier.nil? || divisor.nil?
+			return 0.0 if v.nil? || multiplier.nil? || divisor.nil?
 			return multiplier * v / Float(divisor)
 
 		end
