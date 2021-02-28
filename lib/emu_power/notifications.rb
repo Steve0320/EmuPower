@@ -8,6 +8,7 @@ class EmuPower::Notifications
 	# Base class for notifications
 	class Notification
 
+		# Timestamp of Jan 1st 2000. Used to shift epoch to standard timestamp.
 		UNIX_TIME_OFFSET = 946684800
 
 		attr_accessor :raw
@@ -33,8 +34,8 @@ class EmuPower::Notifications
 
 		end
 
-		# Overridden by subclasses
 		def build(hash)
+			# Overridden by subclasses
 		end
 
 		def parse_timestamp(prop)
@@ -157,7 +158,7 @@ class EmuPower::Notifications
 		attr_accessor :host
 		attr_accessor :enabled
 
-		def initialize(hash)
+		def build(hash)
 			self.type = parse_hex('Type')
 			self.nickname = hash['Nickname']
 			self.account = hash['Account']
@@ -179,7 +180,7 @@ class EmuPower::Notifications
 		attr_accessor :model
 		attr_accessor :date_code
 
-		def initialize(hash)
+		def build(hash)
 			self.install_code = hash['InstallCode']
 			self.link_key = hash['LinkKey']
 			self.firmware_version = hash['FWVersion']
