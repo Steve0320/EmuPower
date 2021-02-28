@@ -73,8 +73,11 @@ class EmuPower::Api
 	# Begin polling for serial data. We spawn a new thread to handle this so we don't
 	# block input. This method blocks until the reader thread terminates, which in most
 	# cases is never. This should usually be called at the end of a program after all
-	# callbacks are registered.
-	def start_serial
+	# callbacks are registered. If blocking is set to false, returns immediately and
+	# lets the caller handle the spawned thread. Non-blocking mode should mostly be
+	# used for development purposes; most production scripts should use blocking mode
+	# and callbacks.
+	def start_serial(blocking = true)
 
 		return false unless @thread.nil?
 
@@ -121,11 +124,17 @@ class EmuPower::Api
 			end
 		end
 
-		# Block until thread is terminated, and ensure we clean up after ourselves.
-		begin
-			@thread.join
-		ensure
-			stop_serial if @thread
+		if blocking
+
+			# Block until thread is terminated, and ensure we clean up after ourselves.
+			begin
+				@thread.join
+			ensure
+				stop_serial if @thread
+			end
+
+		else
+			return @thread
 		end
 
 	end

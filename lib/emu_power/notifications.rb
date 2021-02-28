@@ -57,10 +57,10 @@ class EmuPower::Notifications
 		end
 
 		# Calculate real total from divisors and multipliers
-		def parse_amount(prop)
+		def parse_amount(prop, mul_prop = 'Multiplier', div_prop = 'Divisor')
 
-			multiplier = parse_hex('Multiplier')
-			divisor = parse_hex('Divisor')
+			multiplier = parse_hex(mul_prop)
+			divisor = parse_hex(div_prop)
 			v = parse_hex(prop)
 
 			return 0.0 if v.nil? || multiplier.nil? || divisor.nil?
@@ -85,6 +85,33 @@ class EmuPower::Notifications
 
 	end
 
+	# Dispatch to the appropriate container class based
+	# on the type. Expects a data hash. Returns nil on
+	# bad message.
+	def self.construct(xml)
+
+		hash = Nori.new.parse(xml)
+
+		# Extract the root of the hash and dispatch to the appropriate
+		# container class.
+		type, data = hash.first
+
+		return nil unless notify_roots.include?(type)
+
+		klass = self.const_get(type)
+		return klass.new(data)
+
+	end
+
+	# Helper to get the element names of all types
+	def self.notify_roots
+		return Notification.subclasses.map(&:root_name)
+	end
+
+	###
+	# Begin notification objects
+	###
+
 	class TimeCluster < Notification
 
 		attr_accessor :utc_time
@@ -97,8 +124,28 @@ class EmuPower::Notifications
 
 	end
 
-	# TODO
 	class MessageCluster < Notification
+
+		attr_accessor :id
+		attr_accessor :text
+		attr_accessor :priority
+		attr_accessor :start_time
+		attr_accessor :duration
+		attr_accessor :confirmation_required
+		attr_accessor :confirmed
+		attr_accessor :queue
+
+		def build(hash)
+			self.id = hash['Id']
+			self.text = hash['Text']
+			self.priority = hash['Priority']
+			self.start_time = parse_timestamp('StartTime')
+			self.duration = parse_hex('Duration')
+			self.confirmation_required = parse_bool('ConfirmationRequired')
+			self.confirmed = parse_bool('Confirmed')
+			self.queue = hash['Queue']
+		end
+
 	end
 
 	class NetworkInfo < Notification
@@ -143,7 +190,7 @@ class EmuPower::Notifications
 
 	end
 
-	# TODO
+	# Note: This has no fields except DeviceMacId and MeterMacId
 	class MeterList < Notification
 	end
 
@@ -191,11 +238,17 @@ class EmuPower::Notifications
 
 	end
 
-	# TODO
 	class FastPollStatus < Notification
-	end
 
-	# TODO: Billing periods
+		attr_accessor :frequency
+		attr_accessor :end_time
+
+		def build(hash)
+			self.frequency = parse_hex('Frequency')
+			self.end_time = parse_timestamp('EndTime')
+		end
+
+	end
 
 	class CurrentPeriodUsage < Notification
 
@@ -216,8 +269,24 @@ class EmuPower::Notifications
 
 	end
 
-	# TODO
 	class LastPeriodUsage < Notification
+
+		attr_accessor :usage
+		attr_accessor :digits_right
+		attr_accessor :digits_left
+		attr_accessor :suppress_leading_zeroes
+		attr_accessor :start_date
+		attr_accessor :end_date
+
+		def build(hash)
+			self.usage = parse_amount('LastUsage')
+			self.digits_right = parse_hex('DigitsRight')
+			self.digits_left = parse_hex('DigitsLeft')
+			self.suppress_leading_zeroes = parse_bool('SuppressLeadingZero')
+			self.start_date = parse_timestamp('StartDate')
+			self.end_date = parse_timestamp('EndDate')
+		end
+
 	end
 
 	class InstantaneousDemand < Notification
@@ -254,7 +323,6 @@ class EmuPower::Notifications
 
 	end
 
-	# TODO
 	class PriceCluster < Notification
 
 		attr_accessor :price
@@ -277,8 +345,32 @@ class EmuPower::Notifications
 
 	end
 
-	# TODO
 	class BlockPriceDetail < Notification
+
+		attr_accessor :current_start
+		attr_accessor :current_duration
+		attr_accessor :block_consumption
+		attr_accessor :number_of_blocks
+		attr_accessor :currency_code
+		attr_accessor :trailing_digits
+
+		def build(hash)
+			self.current_start = parse_timestamp('CurrentStart')
+			self.current_duration = parse_hex('CurrentDuration')
+			self.block_consumption = parse_amount(
+					'BlockPeriodConsumption',
+					'BlockPeriodConsumptionMultiplier',
+					'BlockPeriodConsumptionDivisor'
+			)
+
+			# Note: Not sure if multiplier/divisor are supposed to tie in here
+			self.number_of_blocks = parse_amount('NumberOfBlocks')
+
+			self.currency_code = parse_hex('Currency')
+			self.trailing_digits = parse_hex('TrailingDigits')
+
+		end
+
 	end
 
 	class ScheduleInfo < Notification
@@ -295,29 +387,6 @@ class EmuPower::Notifications
 			self.enabled = parse_bool('Enabled')
 		end
 
-	end
-
-	# Dispatch to the appropriate container class based
-	# on the type. Expects a data hash. Returns nil on
-	# bad message.
-	def self.construct(xml)
-
-		hash = Nori.new.parse(xml)
-
-		# Extract the root of the hash and dispatch to the appropriate
-		# container class.
-		type, data = hash.first
-
-		return nil unless notify_roots.include?(type)
-
-		klass = self.const_get(type)
-		return klass.new(data)
-
-	end
-
-	# Helper to get the element names of all types
-	def self.notify_roots
-		return Notification.subclasses.map(&:root_name)
 	end
 
 end

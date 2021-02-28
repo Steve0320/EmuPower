@@ -95,10 +95,6 @@ class EmuPower::Commands
 	class GetFastPollStatus < BasicCommand
 	end
 
-	# Get a list of the previous billing periods. Triggers a TODO
-	class GetBillingPeriods < BasicCommand
-	end
-
 	# Get the running total since the last CloseCurrentPeriod
 	# command was issued. Triggers a CurrentPeriodUsage notify
 	class GetCurrentPeriodUsage < BasicCommand
