@@ -51,6 +51,18 @@ class EmuPower::Commands
 		end
 	end
 
+	class GetCurrentPeriodUsage < Command
+		def initialize
+			super('get_current_period_usage')
+		end
+	end
+
+	class CloseCurrentPeriod < Command
+		def initialize
+			super('close_current_period')
+		end
+	end
+
 	class GetPrice < Command
 		def initialize
 			super('get_price')

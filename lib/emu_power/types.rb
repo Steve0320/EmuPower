@@ -191,8 +191,34 @@ class EmuPower::Types
 		
 	end
 
-	# TODO
 	class CurrentPeriodUsage < Notification
+
+		attr_accessor :raw_usage
+		attr_accessor :multiplier
+		attr_accessor :divisor
+		attr_accessor :digits_right
+		attr_accessor :digits_left
+		attr_accessor :suppress_leading_zeroes
+		attr_accessor :start_date
+
+		def build(hash)
+
+			self.multiplier = parse_hex('Multiplier')
+			self.divisor = parse_hex('Divisor')
+			self.digits_right = parse_hex('DigitsRight')
+			self.digits_left = parse_hex('DigitsLeft')
+			self.raw_usage = parse_hex('CurrentUsage')
+			self.suppress_leading_zeroes = parse_bool('SuppressLeadingZero')
+			self.start_date = parse_timestamp('StartDate')
+
+		end
+
+		def current_usage
+			return 0 if self.raw_usage == 0
+			return nil if self.multiplier.nil? || self.raw_usage.nil? || self.divisor.nil?
+			return self.multiplier * self.raw_usage / Float(self.divisor)
+		end
+
 	end
 
 	# TODO
